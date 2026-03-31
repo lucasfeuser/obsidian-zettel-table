@@ -300,6 +300,8 @@ body.zettel-table-resizing {
 
 .zettel-table-th[style*="--zt-col-width"] {
   width: var(--zt-col-width);
+  min-width: var(--zt-col-width);
+  max-width: var(--zt-col-width);
 }
 
 /* ===== Max Row Height with hover overlay ===== */
