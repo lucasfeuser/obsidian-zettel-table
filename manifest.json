@@ -1,0 +1,10 @@
+{
+  "id": "zettel-table",
+  "name": "Zettel Table",
+  "version": "0.1.0",
+  "minAppVersion": "1.1.0",
+  "description": "A paginated, auto-sizing table view for vault folders with wrapped link pills and typed cell renderers.",
+  "author": "Lucas Feuser",
+  "authorUrl": "https://github.com/lucasfeuser",
+  "isDesktopOnly": false
+}
