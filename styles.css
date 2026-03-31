@@ -98,13 +98,24 @@
   font-size: 12px;
   white-space: nowrap;
   border-bottom: 2px solid var(--zt-border);
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--zt-bg);
   cursor: pointer;
   user-select: none;
 }
 
 .zettel-table-th:hover {
   color: var(--zt-text);
+}
+
+.zettel-table-th.is-drag-over {
+  border-left: 2px solid var(--zt-link);
+}
+
+.zettel-table-th.is-dragging {
+  opacity: 0.5;
 }
 
 .zettel-table-sort-indicator {
@@ -153,6 +164,7 @@ body.zettel-table-resizing {
   border-bottom: 1px solid var(--zt-border);
   vertical-align: top;
   color: var(--zt-text);
+  position: relative;
 }
 
 .zettel-table tbody tr:hover .zettel-table-td {

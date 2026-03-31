@@ -37,6 +37,11 @@ export class ZettelTableView extends ItemView {
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
   private resizeCleanups: Array<() => void> = [];
 
+  // Column drag-and-drop state
+  private dragSourceColumn: string | null = null;
+  // Map of columnKey → <th> element, rebuilt each render
+  private thMap: Map<string, HTMLElement> = new Map();
+
   constructor(
     leaf: WorkspaceLeaf,
     dataLayer: DataLayer,
@@ -131,6 +136,48 @@ export class ZettelTableView extends ItemView {
     return this.folderConfig;
   }
 
+  /** Return a sensible default width for double-click resize reset */
+  private getDefaultColumnWidth(columnKey: string): number {
+    if (columnKey === '_title') return 250;
+    const def = this.dataLayer.getColumnDefs().find((d) => d.key === columnKey);
+    if (!def) return 180;
+    switch (def.type) {
+      case 'date': return 120;
+      case 'number': return 80;
+      case 'boolean': return 80;
+      case 'links': return 280;
+      case 'tags': return 200;
+      default: return 180;
+    }
+  }
+
+  /** Reorder columns: move fromKey to the position of toKey */
+  private reorderColumn(fromKey: string, toKey: string): void {
+    if (!this.currentFolder) return;
+    const fc = this.ensureFolderConfig();
+    const columnDefs = this.dataLayer.getColumnDefs();
+    const visible = getVisibleColumns(columnDefs, fc);
+
+    const keys = visible.map((c) => c.def.key);
+    const fromIdx = keys.indexOf(fromKey);
+    const toIdx = keys.indexOf(toKey);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    keys.splice(fromIdx, 1);
+    keys.splice(toIdx, 0, fromKey);
+
+    keys.forEach((key, i) => {
+      if (!fc.columns[key]) {
+        fc.columns[key] = { visible: true, order: i, width: null };
+      } else {
+        fc.columns[key].order = i;
+      }
+    });
+
+    this.saveSettings();
+    this.renderView();
+  }
+
   private renderEmptyState(): void {
     const content = this.containerEl.children[1] as HTMLElement;
     content.empty();
@@ -154,6 +201,7 @@ export class ZettelTableView extends ItemView {
 
     this.cleanupDropdownListeners();
     this.cleanupResizeListeners();
+    this.thMap = new Map();
 
     const content = this.containerEl.children[1] as HTMLElement;
     content.empty();
@@ -178,7 +226,10 @@ export class ZettelTableView extends ItemView {
     // Header
     const thead = table.createEl('thead');
     const headerRow = thead.createEl('tr');
-    this.renderHeaderCell(headerRow, 'Title', '_title', null);
+
+    // Title column — read saved width from folderConfig
+    const titleWidth = this.folderConfig?.columns['_title']?.width ?? null;
+    this.renderHeaderCell(headerRow, 'Title', '_title', titleWidth);
     for (const col of visibleColumns) {
       this.renderHeaderCell(headerRow, col.def.label, col.def.key, col.config.width);
     }
@@ -192,6 +243,7 @@ export class ZettelTableView extends ItemView {
       const titleTd = tr.createEl('td', { cls: 'zettel-table-td' });
       this.applyClamping(titleTd);
       renderTitleCell(titleTd, note, this.app);
+      this.attachBodyResizeHandle(titleTd, '_title');
 
       // Property cells
       for (const col of visibleColumns) {
@@ -199,11 +251,31 @@ export class ZettelTableView extends ItemView {
         this.applyClamping(td);
         const value = note.values[col.def.key] ?? { type: 'empty' as const };
         renderCell(td, value, note, this.app, this.settings.dateFormat, this.settings.pillColors);
+        this.attachBodyResizeHandle(td, col.def.key);
       }
     }
 
     // Pagination
     this.renderPagination(content, tableData);
+  }
+
+  /** Attach a resize handle to a <td> that drives the corresponding <th> */
+  private attachBodyResizeHandle(td: HTMLElement, columnKey: string): void {
+    const th = this.thMap.get(columnKey);
+    if (!th) return;
+    const handle = td.createDiv({ cls: 'zettel-table-resize-handle' });
+    const defaultWidth = this.getDefaultColumnWidth(columnKey);
+    const cleanup = attachResizeHandle(handle, th, columnKey, defaultWidth, (key, newWidth) => {
+      if (!this.currentFolder) return;
+      const fc = this.ensureFolderConfig();
+      if (!fc.columns[key]) {
+        const colIdx = this.dataLayer.getColumnDefs().findIndex((d) => d.key === key);
+        fc.columns[key] = { visible: true, order: colIdx >= 0 ? colIdx : 0, width: null };
+      }
+      fc.columns[key].width = newWidth;
+      this.saveSettings();
+    });
+    this.resizeCleanups.push(cleanup);
   }
 
   private applyClamping(td: HTMLElement): void {
@@ -276,6 +348,8 @@ export class ZettelTableView extends ItemView {
       attr: { 'aria-label': `Sort by ${label}` },
     });
 
+    this.thMap.set(columnKey, th);
+
     if (width !== null) {
       th.style.setProperty('--zt-col-width', `${width}px`);
     }
@@ -303,13 +377,53 @@ export class ZettelTableView extends ItemView {
       this.renderView();
     });
 
+    // Drag-and-drop column reorder (title column is fixed, not draggable)
+    if (columnKey !== '_title') {
+      th.setAttribute('draggable', 'true');
+
+      th.addEventListener('dragstart', (e: DragEvent) => {
+        this.dragSourceColumn = columnKey;
+        e.dataTransfer?.setData('text/plain', columnKey);
+        th.addClass('is-dragging');
+      });
+
+      th.addEventListener('dragend', () => {
+        this.dragSourceColumn = null;
+        th.removeClass('is-dragging');
+        // Clear any lingering drag-over indicators
+        this.containerEl.querySelectorAll('.zettel-table-th.is-drag-over').forEach((el) => {
+          el.removeClass('is-drag-over');
+        });
+      });
+    }
+
+    // All columns are valid drop targets (except title as source)
+    th.addEventListener('dragover', (e: DragEvent) => {
+      if (!this.dragSourceColumn || this.dragSourceColumn === columnKey || columnKey === '_title') return;
+      e.preventDefault();
+      th.addClass('is-drag-over');
+    });
+
+    th.addEventListener('dragleave', () => {
+      th.removeClass('is-drag-over');
+    });
+
+    th.addEventListener('drop', (e: DragEvent) => {
+      e.preventDefault();
+      th.removeClass('is-drag-over');
+      if (!this.dragSourceColumn || this.dragSourceColumn === columnKey || columnKey === '_title') return;
+      this.reorderColumn(this.dragSourceColumn, columnKey);
+    });
+
     // Resize handle
     const handle = th.createDiv({ cls: 'zettel-table-resize-handle' });
-    const cleanup = attachResizeHandle(handle, th, columnKey, (key, newWidth) => {
+    const defaultWidth = this.getDefaultColumnWidth(columnKey);
+    const cleanup = attachResizeHandle(handle, th, columnKey, defaultWidth, (key, newWidth) => {
       if (!this.currentFolder) return;
       const fc = this.ensureFolderConfig();
       if (!fc.columns[key]) {
-        fc.columns[key] = { visible: true, order: 0, width: null };
+        const colIdx = this.dataLayer.getColumnDefs().findIndex((d) => d.key === key);
+        fc.columns[key] = { visible: true, order: colIdx >= 0 ? colIdx : 0, width: null };
       }
       fc.columns[key].width = newWidth;
       this.saveSettings();
@@ -499,9 +613,11 @@ export class ZettelTableView extends ItemView {
     if (!this.currentFolder) return;
     const fc = this.ensureFolderConfig();
     if (!fc.columns[key]) {
-      fc.columns[key] = { visible: true, order: 0, width: null };
+      const colIdx = this.dataLayer.getColumnDefs().findIndex((d) => d.key === key);
+      fc.columns[key] = { visible: true, order: colIdx >= 0 ? colIdx : 0, width: null };
     }
     fc.columns[key].visible = visible;
+    this.columnDropdownOpen = false;
     this.saveSettings();
     this.renderView();
   }

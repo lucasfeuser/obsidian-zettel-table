@@ -2,6 +2,7 @@ export function attachResizeHandle(
   handle: HTMLElement,
   th: HTMLElement,
   columnKey: string,
+  defaultWidth: number,
   onResize: (columnKey: string, width: number | null) => void
 ): () => void {
   let startX = 0;
@@ -35,8 +36,8 @@ export function attachResizeHandle(
   handle.addEventListener('dblclick', (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    th.style.removeProperty('--zt-col-width');
-    onResize(columnKey, null);
+    th.style.setProperty('--zt-col-width', `${defaultWidth}px`);
+    onResize(columnKey, defaultWidth);
   });
 
   return () => {
