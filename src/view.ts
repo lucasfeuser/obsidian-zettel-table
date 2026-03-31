@@ -1,4 +1,4 @@
-import { ItemView, Menu, TFolder, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Menu, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { DataLayer } from './data';
 import {
   ZettelTableSettings,
@@ -8,10 +8,25 @@ import {
   ThemeMode,
 } from './types';
 import { sortNotes, paginate, getVisibleColumns, cycleSort } from './engine';
-import { renderTitleCell, renderCell } from './renderers';
+import { renderTitleCell, renderCell, RenderCallbacks } from './renderers';
 import { attachResizeHandle } from './resize';
 
 export const VIEW_TYPE_ZETTEL_TABLE = 'zettel-table-view';
+
+/**
+ * Compute the minimum column width so that `text` wraps to at most 2 lines.
+ *
+ * Strategy: you can't break inside a word, so the floor is the widest single word.
+ * Above that floor, wrapping at half the total line width always fits in 2 lines.
+ * Formula: max(longestWordWidth, totalWidth / 2)
+ */
+function twoLineWidth(text: string, measure: (s: string) => number): number {
+  const words = text.trim().split(/\s+/);
+  if (words.length === 0) return 0;
+  const total = measure(text);
+  const longestWord = Math.max(...words.map((w) => measure(w)));
+  return Math.max(longestWord, total / 2);
+}
 
 /** Humanize a sort config into a readable label */
 function humanizeSort(sort: SortConfig | null): string {
@@ -136,19 +151,58 @@ export class ZettelTableView extends ItemView {
     return this.folderConfig;
   }
 
-  /** Return a sensible default width for double-click resize reset */
-  private getDefaultColumnWidth(columnKey: string): number {
-    if (columnKey === '_title') return 250;
+  /**
+   * Measure actual column content to find the ideal width where every value
+   * fits in at most 2 lines (or 1 line for fixed-size types like dates).
+   *
+   * Called lazily on double-click — never at render time.
+   */
+  private computeAutoWidth(columnKey: string): number {
+    const CELL_PADDING = 24;   // 12px left + 12px right
+    const PILL_PADDING = 20;   // pill horizontal padding + gap
+
+    // Borrow font metrics from a rendered cell if one exists
+    const sampleTd = this.containerEl.querySelector('.zettel-table-td') as HTMLElement | null;
+    const font = sampleTd ? getComputedStyle(sampleTd).font : '13px ui-sans-serif, sans-serif';
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 200;
+    ctx.font = font;
+    const measure = (s: string) => ctx.measureText(s).width;
+
+    // For fixed-format types, pixel measurement is not needed
     const def = this.dataLayer.getColumnDefs().find((d) => d.key === columnKey);
-    if (!def) return 180;
-    switch (def.type) {
-      case 'date': return 120;
-      case 'number': return 80;
-      case 'boolean': return 80;
-      case 'links': return 280;
-      case 'tags': return 200;
-      default: return 180;
+    if (def?.type === 'date') return 120;
+    if (def?.type === 'number') return 80;
+    if (def?.type === 'boolean') return 80;
+
+    // Start width from the header label so it never clips the column title
+    const headerLabel = columnKey === '_title' ? 'Title' : (def?.label ?? columnKey);
+    let maxContentWidth = measure(headerLabel);
+
+    const notes = this.dataLayer.getNotes();
+    for (const note of notes) {
+      if (columnKey === '_title') {
+        maxContentWidth = Math.max(maxContentWidth, twoLineWidth(note.displayTitle, measure));
+        continue;
+      }
+      const val = note.values[columnKey];
+      if (!val || val.type === 'empty') continue;
+
+      if (val.type === 'text' || val.type === 'status') {
+        // Plain text and status badges: 2-line fit
+        maxContentWidth = Math.max(maxContentWidth, twoLineWidth(val.value as string, measure));
+      } else if (val.type === 'links' || val.type === 'tags') {
+        // Each pill is independent — find the widest pill, 2-line fit within that pill
+        for (const item of (val.value as string[])) {
+          const pillWidth = twoLineWidth(item, measure) + PILL_PADDING;
+          maxContentWidth = Math.max(maxContentWidth, pillWidth);
+        }
+      }
     }
+
+    return Math.max(80, Math.round(maxContentWidth + CELL_PADDING));
   }
 
   /** Reorder columns: move fromKey to the position of toKey */
@@ -177,6 +231,53 @@ export class ZettelTableView extends ItemView {
     this.saveSettings();
     this.renderView();
   }
+
+  // ── Link opening ──────────────────────────────────────────
+
+  /**
+   * Find the best existing leaf to open a note in:
+   * - Prefers any already-open non-table leaf in the main workspace
+   *   (so clicking multiple notes reuses the same pane rather than
+   *   stacking up new splits)
+   * - Falls back to creating a vertical split if none exists
+   */
+  private getAdjacentLeaf(): WorkspaceLeaf {
+    let target: WorkspaceLeaf | null = null;
+    this.app.workspace.iterateRootLeaves((leaf) => {
+      if (!target && leaf.view.getViewType() !== VIEW_TYPE_ZETTEL_TABLE) {
+        target = leaf;
+      }
+    });
+    return target ?? this.app.workspace.getLeaf('split');
+  }
+
+  private openInAdjacentLeaf(file: TFile): void {
+    const leaf = this.getAdjacentLeaf();
+    leaf.openFile(file);
+    this.app.workspace.revealLeaf(leaf);
+  }
+
+  private openLinkInAdjacentLeaf(linktext: string, sourcePath: string): void {
+    // Resolve the wikilink to a TFile if possible
+    const resolved = this.app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
+    if (resolved) {
+      this.openInAdjacentLeaf(resolved);
+    } else {
+      // Unresolved link (note doesn't exist yet) — let Obsidian handle it
+      this.app.workspace.openLinkText(linktext, sourcePath, 'split');
+    }
+  }
+
+  /** Build the RenderCallbacks object used by every cell renderer */
+  private renderCallbacks(): RenderCallbacks {
+    return {
+      openFile: (file: TFile) => this.openInAdjacentLeaf(file),
+      openLink: (linktext: string, sourcePath: string) =>
+        this.openLinkInAdjacentLeaf(linktext, sourcePath),
+    };
+  }
+
+  // ── Render ────────────────────────────────────────────────
 
   private renderEmptyState(): void {
     const content = this.containerEl.children[1] as HTMLElement;
@@ -242,7 +343,7 @@ export class ZettelTableView extends ItemView {
       // Title cell
       const titleTd = tr.createEl('td', { cls: 'zettel-table-td' });
       this.applyClamping(titleTd);
-      renderTitleCell(titleTd, note, this.app);
+      renderTitleCell(titleTd, note, this.renderCallbacks());
       this.attachBodyResizeHandle(titleTd, '_title');
 
       // Property cells
@@ -250,7 +351,7 @@ export class ZettelTableView extends ItemView {
         const td = tr.createEl('td', { cls: 'zettel-table-td' });
         this.applyClamping(td);
         const value = note.values[col.def.key] ?? { type: 'empty' as const };
-        renderCell(td, value, note, this.app, this.settings.dateFormat, this.settings.pillColors);
+        renderCell(td, value, note, this.app, this.settings.dateFormat, this.settings.pillColors, this.renderCallbacks());
         this.attachBodyResizeHandle(td, col.def.key);
       }
     }
@@ -264,8 +365,7 @@ export class ZettelTableView extends ItemView {
     const th = this.thMap.get(columnKey);
     if (!th) return;
     const handle = td.createDiv({ cls: 'zettel-table-resize-handle' });
-    const defaultWidth = this.getDefaultColumnWidth(columnKey);
-    const cleanup = attachResizeHandle(handle, th, columnKey, defaultWidth, (key, newWidth) => {
+    const cleanup = attachResizeHandle(handle, th, columnKey, () => this.computeAutoWidth(columnKey), (key, newWidth) => {
       if (!this.currentFolder) return;
       const fc = this.ensureFolderConfig();
       if (!fc.columns[key]) {
@@ -417,8 +517,7 @@ export class ZettelTableView extends ItemView {
 
     // Resize handle
     const handle = th.createDiv({ cls: 'zettel-table-resize-handle' });
-    const defaultWidth = this.getDefaultColumnWidth(columnKey);
-    const cleanup = attachResizeHandle(handle, th, columnKey, defaultWidth, (key, newWidth) => {
+    const cleanup = attachResizeHandle(handle, th, columnKey, () => this.computeAutoWidth(columnKey), (key, newWidth) => {
       if (!this.currentFolder) return;
       const fc = this.ensureFolderConfig();
       if (!fc.columns[key]) {

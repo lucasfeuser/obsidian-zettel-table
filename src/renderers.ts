@@ -1,10 +1,19 @@
-import { App } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { NoteValue, NoteData, DateFormat, PillColor } from './types';
+
+/**
+ * Callbacks passed from the view so renderers can open notes
+ * without needing to know about the workspace leaf strategy.
+ */
+export interface RenderCallbacks {
+  openFile: (file: TFile) => void;
+  openLink: (linktext: string, sourcePath: string) => void;
+}
 
 export function renderTitleCell(
   td: HTMLElement,
   note: NoteData,
-  app: App
+  callbacks: RenderCallbacks
 ): void {
   const link = td.createEl('a', {
     cls: 'zettel-table-title-link',
@@ -14,7 +23,7 @@ export function renderTitleCell(
   link.setAttribute('aria-label', `Open ${note.displayTitle}`);
   const openNote = (e: Event) => {
     e.preventDefault();
-    app.workspace.openLinkText(note.file.path, '', false);
+    callbacks.openFile(note.file);
   };
   link.addEventListener('click', openNote);
   link.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -53,7 +62,7 @@ export function renderLinkPills(
   td: HTMLElement,
   value: NoteValue,
   sourcePath: string,
-  app: App
+  callbacks: RenderCallbacks
 ): void {
   if (value.type !== 'links') return;
   const container = td.createDiv({ cls: 'zettel-table-pill-container' });
@@ -67,7 +76,7 @@ export function renderLinkPills(
     pill.setAttribute('aria-label', `Open ${linkName}`);
     const openLink = (e: Event) => {
       e.preventDefault();
-      app.workspace.openLinkText(linkName, sourcePath, false);
+      callbacks.openLink(linkName, sourcePath);
     };
     pill.addEventListener('click', openLink);
     pill.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -113,7 +122,8 @@ export function renderCell(
   note: NoteData,
   app: App,
   dateFormat: DateFormat,
-  pillColors: Record<string, PillColor>
+  pillColors: Record<string, PillColor>,
+  callbacks: RenderCallbacks
 ): void {
   switch (value.type) {
     case 'text':
@@ -129,7 +139,7 @@ export function renderCell(
       renderBooleanCell(td, value);
       break;
     case 'links':
-      renderLinkPills(td, value, note.file.path, app);
+      renderLinkPills(td, value, note.file.path, callbacks);
       break;
     case 'tags':
       renderTagPills(td, value, pillColors);
