@@ -1,4 +1,4 @@
-import { NoteData, NoteValue, SortConfig, TablePage, ColumnDef, FolderConfig, ColumnConfig } from './types';
+import { NoteData, NoteValue, SortConfig, TablePage, ColumnDef, FolderConfig, ColumnConfig, FilterRule, FilterOperator } from './types';
 
 /** Compare two NoteValues for sorting */
 function compareValues(a: NoteValue, b: NoteValue, direction: 'asc' | 'desc'): number {
@@ -51,6 +51,74 @@ export function sortNotes(notes: NoteData[], sort: SortConfig | null): NoteData[
   });
 }
 
+/** Test a single note against a single filter rule */
+function matchesRule(note: NoteData, rule: FilterRule): boolean {
+  const val: NoteValue = rule.column === '_title'
+    ? { type: 'text', value: note.displayTitle }
+    : (note.values[rule.column] ?? { type: 'empty' });
+
+  // Empty checks don't need a value
+  if (rule.operator === 'is_empty') return val.type === 'empty';
+  if (rule.operator === 'is_not_empty') return val.type !== 'empty';
+
+  // All other operators return false for empty cells
+  if (val.type === 'empty') return false;
+
+  const ruleVal = rule.value.toLowerCase();
+
+  switch (val.type) {
+    case 'text':
+    case 'status': {
+      const cell = val.value.toLowerCase();
+      return applyOp(rule.operator, cell, ruleVal);
+    }
+    case 'date': {
+      // Match against the raw ISO string (allows "2025", "2025-03", "2025-03-15")
+      const cell = val.value.toLowerCase();
+      return applyOp(rule.operator, cell, ruleVal);
+    }
+    case 'number': {
+      const cell = String(val.value);
+      return applyOp(rule.operator, cell, rule.value);
+    }
+    case 'boolean': {
+      const cell = val.value ? 'true' : 'false';
+      return applyOp(rule.operator, cell, ruleVal);
+    }
+    case 'links':
+    case 'tags': {
+      // For multi-value cells: equals/contains match if ANY item matches;
+      // not_equals/not_contains match only if NO item matches.
+      const items = val.value.map((s) => s.toLowerCase());
+      switch (rule.operator) {
+        case 'equals':     return items.some((i) => i === ruleVal);
+        case 'not_equals': return !items.some((i) => i === ruleVal);
+        case 'contains':     return items.some((i) => i.includes(ruleVal));
+        case 'not_contains': return !items.some((i) => i.includes(ruleVal));
+        default: return true;
+      }
+    }
+    default:
+      return true;
+  }
+}
+
+function applyOp(op: FilterOperator, cell: string, ruleVal: string): boolean {
+  switch (op) {
+    case 'equals':       return cell === ruleVal;
+    case 'not_equals':   return cell !== ruleVal;
+    case 'contains':     return cell.includes(ruleVal);
+    case 'not_contains': return !cell.includes(ruleVal);
+    default: return true;
+  }
+}
+
+/** Filter notes by all rules in a view (AND logic — all rules must pass) */
+export function filterNotes(notes: NoteData[], filters: FilterRule[]): NoteData[] {
+  if (filters.length === 0) return notes;
+  return notes.filter((note) => filters.every((rule) => matchesRule(note, rule)));
+}
+
 export function paginate(notes: NoteData[], page: number, pageSize: number): TablePage {
   const totalRows = notes.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
@@ -68,7 +136,7 @@ export function paginate(notes: NoteData[], page: number, pageSize: number): Tab
 
 export function getVisibleColumns(
   columnDefs: ColumnDef[],
-  folderConfig: FolderConfig | undefined
+  folderConfig: { columns: Record<string, ColumnConfig> } | undefined
 ): { def: ColumnDef; config: ColumnConfig }[] {
   const columns = columnDefs.map((def) => {
     const config = folderConfig?.columns[def.key] ?? {

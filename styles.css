@@ -12,6 +12,172 @@
   --zt-font-ui: var(--font-ui-small);
 }
 
+/* ===== View Tabs ===== */
+
+.zettel-table-view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--zt-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.zettel-table-view-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  font-size: var(--font-ui-small);
+  color: var(--zt-text-muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  bottom: -1px; /* overlap tab bar border */
+  transition: background 0.1s, color 0.1s;
+}
+
+.zettel-table-view-tab:hover {
+  background: var(--zt-hover);
+  color: var(--zt-text);
+}
+
+.zettel-table-view-tab.is-active {
+  background: var(--zt-bg);
+  color: var(--zt-text);
+  border-color: var(--zt-border);
+  font-weight: 500;
+}
+
+.zettel-table-tab-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+.zettel-table-tab-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.zettel-table-tab-name {
+  outline: none;
+}
+
+.zettel-table-tab-name[contenteditable="true"] {
+  background: var(--background-modifier-form-field);
+  border-radius: 3px;
+  padding: 0 4px;
+  min-width: 40px;
+}
+
+.zettel-table-tab-badge {
+  font-size: 10px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 8px;
+  padding: 1px 5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.zettel-table-view-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--zt-text-muted);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.zettel-table-view-tab-add:hover {
+  background: var(--zt-hover);
+  color: var(--zt-text);
+}
+
+.zettel-table-view-tab-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ===== Filter Panel ===== */
+
+.zettel-table-filter-panel {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--zt-border);
+  background: var(--zt-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.zettel-table-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zettel-table-filter-select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--zt-border);
+  background: var(--background-modifier-form-field);
+  color: var(--zt-text);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.zettel-table-filter-input {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--zt-border);
+  background: var(--background-modifier-form-field);
+  color: var(--zt-text);
+  font-size: var(--font-ui-small);
+}
+
+.zettel-table-filter-input.is-hidden {
+  display: none;
+}
+
+.zettel-table-filter-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--zt-text-muted);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.zettel-table-filter-remove:hover {
+  background: var(--zt-hover);
+  color: var(--zt-text);
+}
+
+.zettel-table-filter-remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+.zettel-table-filter-add-row {
+  padding-top: 2px;
+}
+
 /* ===== Layout ===== */
 
 .zettel-table-view .view-content {
@@ -69,6 +235,15 @@
 
 .zettel-table-toolbar-btn:hover {
   background: var(--zt-hover);
+}
+
+.zettel-table-toolbar-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.zettel-table-toolbar-btn.is-active:hover {
+  background: var(--interactive-accent-hover);
 }
 
 /* ===== Table Container ===== */
@@ -412,6 +587,31 @@ body.zettel-table-resizing {
 
 .zettel-table-column-item:hover {
   background: var(--zt-hover);
+}
+
+.zettel-table-column-item.is-drag-over {
+  border-top: 2px solid var(--zt-link);
+}
+
+.zettel-table-column-item.is-dragging {
+  opacity: 0.4;
+}
+
+.zettel-table-column-drag-handle {
+  display: flex;
+  align-items: center;
+  color: var(--zt-text-faint);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.zettel-table-column-drag-handle:active {
+  cursor: grabbing;
+}
+
+.zettel-table-column-drag-handle svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* ===== Theme overrides for forced Light/Dark ===== */
