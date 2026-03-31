@@ -35,6 +35,7 @@ export class ZettelTableView extends ItemView {
   private columnDropdownOpen = false;
   private escapeHandler: ((e: KeyboardEvent) => void) | null = null;
   private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
+  private resizeCleanups: Array<() => void> = [];
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -79,6 +80,7 @@ export class ZettelTableView extends ItemView {
 
   async onClose(): Promise<void> {
     this.cleanupDropdownListeners();
+    this.cleanupResizeListeners();
   }
 
   refreshSettings(settings: ZettelTableSettings): void {
@@ -151,6 +153,7 @@ export class ZettelTableView extends ItemView {
     }
 
     this.cleanupDropdownListeners();
+    this.cleanupResizeListeners();
 
     const content = this.containerEl.children[1] as HTMLElement;
     content.empty();
@@ -167,6 +170,9 @@ export class ZettelTableView extends ItemView {
 
     // Table container
     const tableContainer = content.createDiv({ cls: 'zettel-table-container' });
+    if (this.settings.maxRowHeight !== null && this.settings.maxRowHeight > 0) {
+      tableContainer.style.setProperty('--zt-max-row-height', `${this.settings.maxRowHeight}px`);
+    }
     const table = tableContainer.createEl('table', { cls: 'zettel-table' });
 
     // Header
@@ -203,7 +209,6 @@ export class ZettelTableView extends ItemView {
   private applyClamping(td: HTMLElement): void {
     if (this.settings.maxRowHeight !== null && this.settings.maxRowHeight > 0) {
       td.addClass('is-clamped');
-      td.style.maxHeight = `${this.settings.maxRowHeight}px`;
     }
   }
 
@@ -218,9 +223,6 @@ export class ZettelTableView extends ItemView {
       text: this.currentFolder ?? 'Select folder',
       attr: { 'aria-label': 'Change folder' },
     });
-    folderBtn.style.cursor = 'pointer';
-    folderBtn.style.border = 'none';
-    folderBtn.style.background = 'none';
     folderBtn.addEventListener('click', (e) => {
       this.showFolderMenu(folderBtn, e);
     });
@@ -275,7 +277,7 @@ export class ZettelTableView extends ItemView {
     });
 
     if (width !== null) {
-      th.style.width = `${width}px`;
+      th.style.setProperty('--zt-col-width', `${width}px`);
     }
 
     const labelSpan = th.createSpan({ text: label });
@@ -303,7 +305,7 @@ export class ZettelTableView extends ItemView {
     // Resize handle (not for title column)
     if (columnKey !== '_title') {
       const handle = th.createDiv({ cls: 'zettel-table-resize-handle' });
-      attachResizeHandle(handle, th, columnKey, (key, newWidth) => {
+      const cleanup = attachResizeHandle(handle, th, columnKey, (key, newWidth) => {
         if (!this.currentFolder) return;
         const fc = this.ensureFolderConfig();
         if (!fc.columns[key]) {
@@ -312,6 +314,7 @@ export class ZettelTableView extends ItemView {
         fc.columns[key].width = newWidth;
         this.saveSettings();
       });
+      this.resizeCleanups.push(cleanup);
     }
   }
 
@@ -349,22 +352,26 @@ export class ZettelTableView extends ItemView {
     }
   }
 
-  private showFolderMenu(anchor: HTMLElement, event: Event): void {
-    const menu = new Menu();
-    const rootChildren = this.app.vault.getRoot().children;
-
-    const folders: TFolder[] = [];
-    for (const child of rootChildren) {
+  private collectFolders(folder: TFolder, depth: number, result: Array<{ folder: TFolder; depth: number }>): void {
+    for (const child of folder.children) {
       if (child instanceof TFolder && !child.path.startsWith('.')) {
-        folders.push(child);
+        result.push({ folder: child, depth });
+        this.collectFolders(child, depth + 1, result);
       }
     }
+  }
 
-    folders.sort((a, b) => a.path.localeCompare(b.path));
+  private showFolderMenu(anchor: HTMLElement, event: Event): void {
+    const menu = new Menu();
 
-    for (const folder of folders) {
+    const entries: Array<{ folder: TFolder; depth: number }> = [];
+    this.collectFolders(this.app.vault.getRoot(), 0, entries);
+    entries.sort((a, b) => a.folder.path.localeCompare(b.folder.path));
+
+    for (const { folder, depth } of entries) {
+      const indent = '\u00a0\u00a0'.repeat(depth);
       menu.addItem((item) => {
-        item.setTitle(folder.path)
+        item.setTitle(`${indent}${folder.name}`)
           .setIcon('folder')
           .onClick(() => {
             this.loadFolder(folder.path);
@@ -480,6 +487,13 @@ export class ZettelTableView extends ItemView {
       document.removeEventListener('click', this.outsideClickHandler);
       this.outsideClickHandler = null;
     }
+  }
+
+  private cleanupResizeListeners(): void {
+    for (const cleanup of this.resizeCleanups) {
+      cleanup();
+    }
+    this.resizeCleanups = [];
   }
 
   private toggleColumnVisibility(key: string, visible: boolean): void {

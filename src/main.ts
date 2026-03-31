@@ -47,7 +47,7 @@ export default class ZettelTablePlugin extends Plugin {
       return;
     }
 
-    const leaf = this.app.workspace.getRightLeaf(false);
+    const leaf = this.app.workspace.getLeaf(false);
     if (leaf) {
       await leaf.setViewState({
         type: VIEW_TYPE_ZETTEL_TABLE,

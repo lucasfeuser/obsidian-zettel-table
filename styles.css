@@ -170,6 +170,7 @@ body.zettel-table-resizing {
 
 .zettel-table-number {
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* ===== Pill Container ===== */
@@ -283,11 +284,18 @@ body.zettel-table-resizing {
   font-style: italic;
 }
 
+/* ===== Column Width via CSS Custom Property ===== */
+
+.zettel-table-th[style*="--zt-col-width"] {
+  width: var(--zt-col-width);
+}
+
 /* ===== Max Row Height with hover overlay ===== */
 
 .zettel-table-td.is-clamped {
   overflow: hidden;
   position: relative;
+  max-height: var(--zt-max-row-height);
 }
 
 .zettel-table-td.is-clamped:hover {

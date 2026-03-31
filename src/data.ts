@@ -188,5 +188,26 @@ export class DataLayer extends Component {
         }
       })
     );
+
+    this.registerEvent(
+      this.app.vault.on('rename', (file, oldPath) => {
+        if (!(file instanceof TFile)) return;
+        const wasTracked = this.notes.has(oldPath);
+        // Remove old path entry
+        if (wasTracked) {
+          this.notes.delete(oldPath);
+        }
+        // If file is now in our folder, re-extract it
+        if (this.folderPath && file.parent?.path === this.folderPath) {
+          this.extractNote(file);
+          this.rebuildColumnDefs();
+          this.onChangeCallback?.();
+        } else if (wasTracked) {
+          // File moved out of our folder — rebuild without it
+          this.rebuildColumnDefs();
+          this.onChangeCallback?.();
+        }
+      })
+    );
   }
 }
