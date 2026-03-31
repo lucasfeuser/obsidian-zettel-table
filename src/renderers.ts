@@ -36,10 +36,24 @@ export function renderTextCell(td: HTMLElement, value: NoteValue): void {
   td.createSpan({ text: value.value, cls: 'zettel-table-text' });
 }
 
+/**
+ * When a stored value includes a time component (e.g. "2025-12-21T14:30"),
+ * append a time suffix to the user's chosen date format so existing
+ * date-only notes never get a spurious "12:00 am" appended.
+ */
+const DATE_TIME_SUFFIX: Record<DateFormat, string> = {
+  'MMM D, YYYY':  ' h:mm a',   // "Mar 15, 2024 2:30 pm"
+  'YYYY-MM-DD':   ' HH:mm',    // "2024-03-15 14:30"
+  'D MMM YYYY':   ' HH:mm',    // "15 Mar 2024 14:30"
+  'MM/DD/YYYY':   ' h:mm a',   // "03/15/2024 2:30 pm"
+};
+
 export function renderDateCell(td: HTMLElement, value: NoteValue, format: DateFormat): void {
   if (value.type !== 'date') return;
+  const hasTime = /T\d{2}:\d{2}/.test(value.value);
+  const fmt = hasTime ? format + DATE_TIME_SUFFIX[format] : format;
   const m = (window as unknown as { moment: (s: string) => { format: (f: string) => string } }).moment(value.value);
-  td.createSpan({ text: m.format(format), cls: 'zettel-table-date' });
+  td.createSpan({ text: m.format(fmt), cls: 'zettel-table-date' });
 }
 
 export function renderNumberCell(td: HTMLElement, value: NoteValue): void {

@@ -8,10 +8,11 @@ function humanizeKey(key: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Detect if a string is a YYYY-MM-DD date */
+/** Detect if a string is a date or datetime (YYYY-MM-DD or YYYY-MM-DDTHH:mm) */
 function isDateString(value: unknown): boolean {
   if (typeof value !== 'string') return false;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  // Match plain date (2025-12-21) or ISO datetime (2025-12-21T14:30 or 2025-12-21T14:30:00)
+  return /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(value);
 }
 
 /** Detect if a string is a wikilink: [[...]] */
