@@ -116,17 +116,29 @@
 
 .zettel-table-resize-handle {
   position: absolute;
-  right: 0;
+  right: -4px;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 12px;
   cursor: col-resize;
   background: transparent;
+  z-index: 1;
 }
 
-.zettel-table-resize-handle:hover {
+.zettel-table-resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 0.1s;
+}
+
+.zettel-table-resize-handle:hover::after {
   background: var(--zt-link);
-  opacity: 0.3;
+  opacity: 0.5;
 }
 
 body.zettel-table-resizing {

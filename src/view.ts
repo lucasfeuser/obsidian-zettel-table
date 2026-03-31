@@ -290,8 +290,9 @@ export class ZettelTableView extends ItemView {
       });
     }
 
-    // Click to sort
-    th.addEventListener('click', () => {
+    // Click to sort (ignore clicks on the resize handle)
+    th.addEventListener('click', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('.zettel-table-resize-handle')) return;
       this.currentSort = cycleSort(this.currentSort, columnKey);
       if (this.currentFolder) {
         const fc = this.ensureFolderConfig();
@@ -302,20 +303,18 @@ export class ZettelTableView extends ItemView {
       this.renderView();
     });
 
-    // Resize handle (not for title column)
-    if (columnKey !== '_title') {
-      const handle = th.createDiv({ cls: 'zettel-table-resize-handle' });
-      const cleanup = attachResizeHandle(handle, th, columnKey, (key, newWidth) => {
-        if (!this.currentFolder) return;
-        const fc = this.ensureFolderConfig();
-        if (!fc.columns[key]) {
-          fc.columns[key] = { visible: true, order: 0, width: null };
-        }
-        fc.columns[key].width = newWidth;
-        this.saveSettings();
-      });
-      this.resizeCleanups.push(cleanup);
-    }
+    // Resize handle
+    const handle = th.createDiv({ cls: 'zettel-table-resize-handle' });
+    const cleanup = attachResizeHandle(handle, th, columnKey, (key, newWidth) => {
+      if (!this.currentFolder) return;
+      const fc = this.ensureFolderConfig();
+      if (!fc.columns[key]) {
+        fc.columns[key] = { visible: true, order: 0, width: null };
+      }
+      fc.columns[key].width = newWidth;
+      this.saveSettings();
+    });
+    this.resizeCleanups.push(cleanup);
   }
 
   private renderPagination(parent: HTMLElement, tableData: ReturnType<typeof paginate>): void {
