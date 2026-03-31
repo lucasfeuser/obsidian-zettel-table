@@ -1,1 +1,405 @@
-/* Zettel Table — styles populated in Task 7 */
+/* ===== Zettel Table — Base Variables ===== */
+
+.zettel-table-view {
+  --zt-bg: var(--background-primary);
+  --zt-bg-secondary: var(--background-secondary);
+  --zt-text: var(--text-normal);
+  --zt-text-muted: var(--text-muted);
+  --zt-text-faint: var(--text-faint);
+  --zt-link: var(--text-accent);
+  --zt-border: var(--background-modifier-border);
+  --zt-hover: var(--background-modifier-hover);
+  --zt-font-ui: var(--font-ui-small);
+}
+
+/* ===== Layout ===== */
+
+.zettel-table-view .view-content {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.zettel-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--zt-border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.zettel-table-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zettel-table-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zettel-table-folder-name {
+  font-weight: 600;
+  color: var(--zt-text);
+}
+
+.zettel-table-note-count {
+  font-size: var(--zt-font-ui);
+  color: var(--zt-text-faint);
+  background: var(--zt-bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.zettel-table-toolbar-btn {
+  font-size: var(--zt-font-ui);
+  color: var(--zt-text-muted);
+  background: var(--zt-bg-secondary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.zettel-table-toolbar-btn:hover {
+  background: var(--zt-hover);
+}
+
+/* ===== Table Container ===== */
+
+.zettel-table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0 16px;
+}
+
+/* ===== Table ===== */
+
+.zettel-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 13px;
+}
+
+/* ===== Header ===== */
+
+.zettel-table-th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--zt-text-muted);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--zt-border);
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.zettel-table-th:hover {
+  color: var(--zt-text);
+}
+
+.zettel-table-sort-indicator {
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+/* ===== Resize Handle ===== */
+
+.zettel-table-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.zettel-table-resize-handle:hover {
+  background: var(--zt-link);
+  opacity: 0.3;
+}
+
+body.zettel-table-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* ===== Rows ===== */
+
+.zettel-table-td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--zt-border);
+  vertical-align: top;
+  color: var(--zt-text);
+}
+
+.zettel-table tbody tr:hover .zettel-table-td {
+  background: var(--zt-hover);
+}
+
+/* ===== Title Link ===== */
+
+.zettel-table-title-link {
+  color: var(--zt-link);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.zettel-table-title-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== Date ===== */
+
+.zettel-table-date {
+  white-space: nowrap;
+  color: var(--zt-text-muted);
+}
+
+/* ===== Number ===== */
+
+.zettel-table-number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Pill Container ===== */
+
+.zettel-table-pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ===== Link Pills ===== */
+
+.zettel-table-link-pill {
+  background: var(--zt-bg-secondary);
+  border: 1px solid var(--zt-border);
+  color: var(--zt-link);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.zettel-table-link-pill:hover {
+  background: var(--zt-hover);
+  text-decoration: underline;
+}
+
+/* ===== Tag / Theme Pills ===== */
+
+.zettel-table-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ===== Pill Color System ===== */
+
+/* Gray (default) */
+.zettel-table-pill[data-color="gray"] { background: var(--zt-pill-gray-bg, var(--zt-bg-secondary)); color: var(--zt-pill-gray-text, var(--zt-text)); }
+.theme-light .zettel-table-view { --zt-pill-gray-bg: #f5f5f5; --zt-pill-gray-text: #444; }
+.theme-dark .zettel-table-view { --zt-pill-gray-bg: #313244; --zt-pill-gray-text: #cdd6f4; }
+
+/* Red */
+.zettel-table-pill[data-color="red"] { background: var(--zt-pill-red-bg); color: var(--zt-pill-red-text); }
+.theme-light .zettel-table-view { --zt-pill-red-bg: #ffebee; --zt-pill-red-text: #c62828; }
+.theme-dark .zettel-table-view { --zt-pill-red-bg: #3b1212; --zt-pill-red-text: #f28b82; }
+
+/* Orange */
+.zettel-table-pill[data-color="orange"] { background: var(--zt-pill-orange-bg); color: var(--zt-pill-orange-text); }
+.theme-light .zettel-table-view { --zt-pill-orange-bg: #fff3e0; --zt-pill-orange-text: #e65100; }
+.theme-dark .zettel-table-view { --zt-pill-orange-bg: #3b2408; --zt-pill-orange-text: #ffb74d; }
+
+/* Yellow */
+.zettel-table-pill[data-color="yellow"] { background: var(--zt-pill-yellow-bg); color: var(--zt-pill-yellow-text); }
+.theme-light .zettel-table-view { --zt-pill-yellow-bg: #fffde7; --zt-pill-yellow-text: #f57f17; }
+.theme-dark .zettel-table-view { --zt-pill-yellow-bg: #3b3408; --zt-pill-yellow-text: #fff176; }
+
+/* Green */
+.zettel-table-pill[data-color="green"] { background: var(--zt-pill-green-bg); color: var(--zt-pill-green-text); }
+.theme-light .zettel-table-view { --zt-pill-green-bg: #e8f5e9; --zt-pill-green-text: #2e7d32; }
+.theme-dark .zettel-table-view { --zt-pill-green-bg: #1b3d1f; --zt-pill-green-text: #a6e3a1; }
+
+/* Teal */
+.zettel-table-pill[data-color="teal"] { background: var(--zt-pill-teal-bg); color: var(--zt-pill-teal-text); }
+.theme-light .zettel-table-view { --zt-pill-teal-bg: #e0f2f1; --zt-pill-teal-text: #00695c; }
+.theme-dark .zettel-table-view { --zt-pill-teal-bg: #0d3b35; --zt-pill-teal-text: #80cbc4; }
+
+/* Blue */
+.zettel-table-pill[data-color="blue"] { background: var(--zt-pill-blue-bg); color: var(--zt-pill-blue-text); }
+.theme-light .zettel-table-view { --zt-pill-blue-bg: #e3f2fd; --zt-pill-blue-text: #1565c0; }
+.theme-dark .zettel-table-view { --zt-pill-blue-bg: #0d253b; --zt-pill-blue-text: #90caf9; }
+
+/* Indigo */
+.zettel-table-pill[data-color="indigo"] { background: var(--zt-pill-indigo-bg); color: var(--zt-pill-indigo-text); }
+.theme-light .zettel-table-view { --zt-pill-indigo-bg: #e8eaf6; --zt-pill-indigo-text: #283593; }
+.theme-dark .zettel-table-view { --zt-pill-indigo-bg: #1a1d3b; --zt-pill-indigo-text: #9fa8da; }
+
+/* Purple */
+.zettel-table-pill[data-color="purple"] { background: var(--zt-pill-purple-bg); color: var(--zt-pill-purple-text); }
+.theme-light .zettel-table-view { --zt-pill-purple-bg: #f3e5f5; --zt-pill-purple-text: #7b1fa2; }
+.theme-dark .zettel-table-view { --zt-pill-purple-bg: #2d1336; --zt-pill-purple-text: #ce93d8; }
+
+/* Pink */
+.zettel-table-pill[data-color="pink"] { background: var(--zt-pill-pink-bg); color: var(--zt-pill-pink-text); }
+.theme-light .zettel-table-view { --zt-pill-pink-bg: #fce4ec; --zt-pill-pink-text: #c2185b; }
+.theme-dark .zettel-table-view { --zt-pill-pink-bg: #3b0d1e; --zt-pill-pink-text: #f48fb1; }
+
+/* ===== Status Badges ===== */
+
+.zettel-table-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.zettel-table-badge[data-status="active"] { background: var(--zt-pill-green-bg); color: var(--zt-pill-green-text); }
+.zettel-table-badge[data-status="superseded"] { background: var(--zt-pill-gray-bg, var(--zt-bg-secondary)); color: var(--zt-pill-gray-text, var(--zt-text-muted)); }
+.zettel-table-badge[data-status="developing"] { background: var(--zt-pill-yellow-bg); color: var(--zt-pill-yellow-text); }
+.zettel-table-badge[data-status="reading"],
+.zettel-table-badge[data-status="unprocessed"] { background: var(--zt-pill-blue-bg); color: var(--zt-pill-blue-text); }
+.zettel-table-badge[data-status="processed"] { background: var(--zt-pill-teal-bg); color: var(--zt-pill-teal-text); }
+
+/* ===== Empty Cell ===== */
+
+.zettel-table-empty {
+  color: var(--zt-text-faint);
+  font-style: italic;
+}
+
+/* ===== Max Row Height with hover overlay ===== */
+
+.zettel-table-td.is-clamped {
+  overflow: hidden;
+  position: relative;
+}
+
+.zettel-table-td.is-clamped:hover {
+  overflow: visible;
+  z-index: 10;
+}
+
+.zettel-table-td.is-clamped:hover > * {
+  background: var(--zt-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 10px 12px;
+  position: relative;
+}
+
+/* ===== Pagination ===== */
+
+.zettel-table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--zt-border);
+  flex-shrink: 0;
+}
+
+.zettel-table-page-info {
+  font-size: 12px;
+  color: var(--zt-text-faint);
+}
+
+.zettel-table-page-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.zettel-table-page-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  background: var(--zt-bg-secondary);
+  color: var(--zt-text-muted);
+}
+
+.zettel-table-page-btn:hover {
+  background: var(--zt-hover);
+}
+
+.zettel-table-page-btn.is-active {
+  background: var(--zt-link);
+  color: var(--background-primary);
+  font-weight: 500;
+}
+
+/* ===== Dropdown Anchor ===== */
+
+.zettel-table-dropdown-anchor {
+  position: relative;
+}
+
+/* ===== Column Dropdown ===== */
+
+.zettel-table-column-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--zt-bg);
+  border: 1px solid var(--zt-border);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.zettel-table-column-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--zt-text);
+}
+
+.zettel-table-column-item:hover {
+  background: var(--zt-hover);
+}
+
+/* ===== Theme overrides for forced Light/Dark ===== */
+
+.zettel-table-view.zt-theme-light {
+  --zt-bg: #ffffff;
+  --zt-bg-secondary: #f5f5f5;
+  --zt-text: #1a1a2e;
+  --zt-text-muted: #666666;
+  --zt-text-faint: #999999;
+  --zt-link: #4a6fa5;
+  --zt-border: #e0e0e0;
+  --zt-hover: #f0f0f0;
+}
+
+.zettel-table-view.zt-theme-dark {
+  --zt-bg: #1e1e2e;
+  --zt-bg-secondary: #313244;
+  --zt-text: #cdd6f4;
+  --zt-text-muted: #a6adc8;
+  --zt-text-faint: #6c7086;
+  --zt-link: #89b4fa;
+  --zt-border: #45475a;
+  --zt-hover: #313244;
+}
